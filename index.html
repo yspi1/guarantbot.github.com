@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypto Escrow WebApp</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <style>
         :root {
             --primary: #0088cc;
@@ -228,8 +229,8 @@
         // Конфигурация
         const CONFIG = {
             BOT_USERNAME: 'tulskiguarant_bot',
-            CRYPTO_API_KEY: '409991:AAfgHAgj3RqxiS4uZRVV7NZ3SLT3EoFVUCY',
-            API_URL: 'https://api.cryptoescrow.com/v1' // Пример API
+            BOT_LINK: 'https://t.me/tulskiguarant_bot',
+            CRYPTO_API_KEY: '409991:AAfgHAgj3RqxiS4uZRVV7NZ3SLT3EoFVUCY'
         };
 
         // Имитация базы данных
@@ -345,13 +346,9 @@
                 // Обработчик кнопки "Открыть в Telegram"
                 this.el.authBtn?.addEventListener('click', () => {
                     if (this.isTelegramWebApp()) {
-                        this.tg.openTelegramLink(`https://t.me/${CONFIG.BOT_USERNAME}`);
+                        this.tg.openTelegramLink(CONFIG.BOT_LINK);
                     } else {
-                        this.el['direct-link'].style.display = 'block';
-                        window.location.href = `tg://resolve?domain=${CONFIG.BOT_USERNAME}`;
-                        setTimeout(() => {
-                            window.open(`https://t.me/${CONFIG.BOT_USERNAME}`, '_blank');
-                        }, 200);
+                        window.open(CONFIG.BOT_LINK, '_blank');
                     }
                 });
                 
@@ -381,9 +378,7 @@
                     this.initTelegramFeatures();
                 } else {
                     this.el.authSection?.classList.remove('hidden');
-                    if (!this.isTelegramWebApp()) {
-                        this.el['direct-link'].style.display = 'block';
-                    }
+                    this.el['direct-link'].style.display = 'block';
                 }
             }
             
@@ -434,14 +429,14 @@
                 const otherUser = this.db.getUser(otherPartyId) || {};
                 
                 // Основная информация
-                this.el['deal-id-title'].textContent = deal.deal_id;
+                this.el['deal-id-title'].textContent = deal.deal_id.substring(0, 8);
                 this.el['deal-status'].className = `deal-status status-${deal.status}`;
                 this.el['deal-status'].textContent = this.getStatusText(deal.status);
                 
                 // Информация о сделке
                 this.el['deal-info'].innerHTML = `
                     <p><strong>${isBuyer ? 'Продавец' : 'Покупатель'}:</strong> 
-                    ${otherUser.username || otherUser.first_name || `ID: ${otherPartyId}`}</p>
+                    ${otherUser.username ? '@' + otherUser.username : otherUser.first_name || `ID: ${otherPartyId}`}</p>
                     <p><strong>Сумма:</strong> ${deal.amount} ${deal.currency}</p>
                     <p><strong>Описание:</strong> ${deal.description}</p>
                     <p><strong>Создано:</strong> ${new Date(deal.created_at).toLocaleString()}</p>
@@ -483,20 +478,10 @@
             }
             
             generateQRCode(text) {
-                const canvas = document.createElement('canvas');
-                canvas.width = 200;
-                canvas.height = 200 
-            Похоже, что код обрезался. Давайте продолжим с того места, где остановились, и завершим реализацию приложения.
-
-```javascript
-                // Генерация QR-кода
+                const canvas = document.getElementById('qr-canvas');
                 QRCode.toCanvas(canvas, text, { width: 180 }, (error) => {
                     if (error) console.error('QR code error:', error);
                 });
-                
-                const container = this.el['qr-code-container'];
-                container.innerHTML = '';
-                container.appendChild(canvas);
             }
             
             renderActions() {
@@ -543,7 +528,8 @@
                     'waiting_payment': 'Ожидает оплаты',
                     'payment_sent': 'Оплата отправлена',
                     'completed': 'Завершена',
-                    'dispute': 'Спор'
+                    'dispute': 'Спор',
+                    'canceled': 'Отменена'
                 };
                 return statusTexts[status] || status;
             }
@@ -556,7 +542,7 @@
                     'USDT': '0xdAC17F958D2ee523a2206206994597C13D831ec7',
                     'TON': 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N'
                 };
-                return `${prefixes[currency]}_${dealId}`;
+                return `${prefixes[currency]}_${dealId.substring(0, 8)}`;
             }
             
             loadDeals() {
@@ -584,7 +570,7 @@
                     dealEl.innerHTML = `
                         <h3>Сделка #${deal.deal_id.substring(0, 8)}</h3>
                         <p><strong>${isBuyer ? 'Продавец' : 'Покупатель'}:</strong> 
-                        ${otherUser.username || otherUser.first_name || `ID: ${otherPartyId}`}</p>
+                        ${otherUser.username ? '@' + otherUser.username : otherUser.first_name || `ID: ${otherPartyId}`}</p>
                         <p><strong>Сумма:</strong> ${deal.amount} ${deal.currency}</p>
                         <p><strong>Статус:</strong> <span class="status-${deal.status}">${this.getStatusText(deal.status)}</span></p>
                     `;
@@ -601,7 +587,7 @@
                 const currency = this.el['currency'].value;
                 const description = this.el['description'].value.trim();
                 
-                if (!sellerId || isNaN(amount) {
+                if (!sellerId || isNaN(amount)) {
                     alert('Пожалуйста, заполните все поля корректно');
                     return;
                 }
@@ -637,10 +623,7 @@
                 this.currentDeal = this.db.getDeal(this.currentDeal.deal_id);
                 this.renderDeal();
                 
-                // В реальном приложении здесь была бы проверка транзакции через API
-                setTimeout(() => {
-                    alert('Транзакция получена, ожидайте подтверждения от продавца');
-                }, 500);
+                alert('Транзакция получена, ожидайте подтверждения от продавца');
             }
             
             confirmPaymentReceived() {
@@ -706,15 +689,8 @@
 
         // Инициализация приложения
         document.addEventListener('DOMContentLoaded', () => {
-            // Подключаем библиотеку QR-кода
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
-            script.onload = () => {
-                new EscrowApp();
-            };
-            document.head.appendChild(script);
+            new EscrowApp();
         });
     </script>
 </body>
 </html>
-```
