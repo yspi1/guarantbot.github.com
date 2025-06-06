@@ -1,0 +1,635 @@
+# Полный HTML-код для GitHub Pages (все в одном файле)
+
+Вот полный код, который вы можете разместить на GitHub Pages как `index.html`. Он включает весь необходимый функционал (фронтенд + имитацию бэкенда) в одном файле:
+
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Escrow WebApp</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #0088cc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #006699;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #bb2d3b;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .deal-status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .status-created {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-waiting_payment {
+            background: #cce5ff;
+            color: #004085;
+        }
+        .status-payment_sent {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-dispute {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .deal-card {
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-bottom: 15px;
+        }
+        .deal-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .hidden {
+            display: none;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .mt-3 {
+            margin-top: 15px;
+        }
+        .mb-3 {
+            margin-bottom: 15px;
+        }
+        .qr-code {
+            max-width: 200px;
+            margin: 0 auto;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        .txid {
+            word-break: break-all;
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 5px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Авторизация -->
+        <div id="auth-section" class="card text-center">
+            <h2>Добро пожаловать в Crypto Escrow</h2>
+            <p>Безопасные сделки с криптовалютой через Telegram</p>
+            <button id="auth-btn" class="btn">Открыть в Telegram</button>
+            <div class="mt-3">
+                <small>Для работы необходимо открыть этот сайт через Telegram-бота</small>
+            </div>
+        </div>
+
+        <!-- Основной интерфейс -->
+        <div id="main-section" class="hidden">
+            <div class="card">
+                <h2>Новая сделка</h2>
+                <form id="new-deal-form">
+                    <div class="form-group">
+                        <label for="seller-id">ID продавца (Telegram @username или ID):</label>
+                        <input type="text" id="seller-id" placeholder="@username или 123456789" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">Сумма:</label>
+                        <input type="number" step="0.000001" id="amount" placeholder="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="currency">Валюта:</label>
+                        <select id="currency" required>
+                            <option value="BTC">Bitcoin (BTC)</option>
+                            <option value="ETH">Ethereum (ETH)</option>
+                            <option value="USDT">Tether (USDT)</option>
+                            <option value="TON">Toncoin (TON)</option>
+                            <option value="USDC">USD Coin (USDC)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Описание сделки:</label>
+                        <textarea id="description" rows="3" placeholder="Что вы покупаете/продаете?" required></textarea>
+                    </div>
+                    <button type="submit" class="btn">Создать сделку</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Мои сделки</h2>
+                <div id="deals-list">
+                    <p id="no-deals-message">У вас пока нет сделок. Создайте первую!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Детали сделки -->
+        <div id="deal-details" class="hidden">
+            <div class="card">
+                <h2>Сделка #<span id="deal-id-title"></span></h2>
+                <div id="deal-status" class="deal-status"></div>
+                
+                <div id="deal-info"></div>
+                
+                <div id="payment-section" class="hidden">
+                    <h3>Оплата</h3>
+                    <div id="payment-info"></div>
+                    <div class="qr-code" id="qr-code-container">
+                        <!-- QR-код будет сгенерирован здесь -->
+                    </div>
+                    <div class="form-group mt-3">
+                        <label for="txid">ID транзакции (если уже отправили):</label>
+                        <input type="text" id="txid" placeholder="Введите TXID/hash транзакции">
+                        <button id="submit-txid" class="btn mt-3">Подтвердить отправку</button>
+                    </div>
+                </div>
+                
+                <div id="deal-actions" class="mt-3"></div>
+                
+                <button id="back-btn" class="btn mt-3">Назад к списку сделок</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Имитация базы данных в localStorage
+        class Database {
+            constructor() {
+                if (!localStorage.getItem('escrow_deals')) {
+                    localStorage.setItem('escrow_deals', JSON.stringify([]));
+                }
+                if (!localStorage.getItem('escrow_users')) {
+                    localStorage.setItem('escrow_users', JSON.stringify([]));
+                }
+            }
+            
+            getDeals() {
+                return JSON.parse(localStorage.getItem('escrow_deals'));
+            }
+            
+            getDeal(dealId) {
+                const deals = this.getDeals();
+                return deals.find(d => d.deal_id === dealId);
+            }
+            
+            getUserDeals(userId) {
+                const deals = this.getDeals();
+                return deals.filter(d => d.buyer_id === userId || d.seller_id === userId);
+            }
+            
+            addDeal(deal) {
+                const deals = this.getDeals();
+                deal.deal_id = deals.length > 0 ? Math.max(...deals.map(d => d.deal_id)) + 1 : 1;
+                deal.created_at = new Date().toISOString();
+                deal.updated_at = deal.created_at;
+                deal.status = 'created';
+                deals.push(deal);
+                localStorage.setItem('escrow_deals', JSON.stringify(deals));
+                return deal;
+            }
+            
+            updateDeal(dealId, updates) {
+                const deals = this.getDeals();
+                const index = deals.findIndex(d => d.deal_id === dealId);
+                if (index !== -1) {
+                    deals[index] = {...deals[index], ...updates, updated_at: new Date().toISOString()};
+                    localStorage.setItem('escrow_deals', JSON.stringify(deals));
+                    return deals[index];
+                }
+                return null;
+            }
+            
+            registerUser(user) {
+                const users = JSON.parse(localStorage.getItem('escrow_users'));
+                if (!users.find(u => u.user_id === user.user_id)) {
+                    users.push({
+                        ...user,
+                        join_date: new Date().toISOString()
+                    });
+                    localStorage.setItem('escrow_users', JSON.stringify(users));
+                }
+            }
+            
+            getUser(userId) {
+                const users = JSON.parse(localStorage.getItem('escrow_users'));
+                return users.find(u => u.user_id === userId);
+            }
+        }
+
+        // Основной класс приложения
+        class EscrowApp {
+            constructor() {
+                this.db = new Database();
+                this.tg = window.Telegram.WebApp;
+                this.user = null;
+                this.currentDeal = null;
+                
+                this.initElements();
+                this.initEvents();
+                
+                if (this.tg.initDataUnsafe?.user) {
+                    this.handleAuth();
+                } else {
+                    document.getElementById('auth-section').classList.remove('hidden');
+                }
+            }
+            
+            initElements() {
+                this.elements = {
+                    authSection: document.getElementById('auth-section'),
+                    mainSection: document.getElementById('main-section'),
+                    dealDetails: document.getElementById('deal-details'),
+                    dealsList: document.getElementById('deals-list'),
+                    noDealsMessage: document.getElementById('no-deals-message'),
+                    dealIdTitle: document.getElementById('deal-id-title'),
+                    dealStatus: document.getElementById('deal-status'),
+                    dealInfo: document.getElementById('deal-info'),
+                    paymentSection: document.getElementById('payment-section'),
+                    paymentInfo: document.getElementById('payment-info'),
+                    qrCodeContainer: document.getElementById('qr-code-container'),
+                    dealActions: document.getElementById('deal-actions'),
+                    newDealForm: document.getElementById('new-deal-form'),
+                    authBtn: document.getElementById('auth-btn'),
+                    backBtn: document.getElementById('back-btn'),
+                    submitTxid: document.getElementById('submit-txid'),
+                    txidInput: document.getElementById('txid')
+                };
+            }
+            
+            initEvents() {
+                this.elements.authBtn.addEventListener('click', () => {
+                    this.tg.openTelegramLink('https://t.me/YourEscrowBot');
+                });
+                
+                this.elements.backBtn.addEventListener('click', () => {
+                    this.showMainSection();
+                    this.loadDeals();
+                });
+                
+                this.elements.newDealForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.createDeal();
+                });
+                
+                this.elements.submitTxid.addEventListener('click', () => {
+                    this.confirmPayment();
+                });
+            }
+            
+            handleAuth() {
+                this.user = this.tg.initDataUnsafe.user;
+                this.db.registerUser(this.user);
+                
+                this.elements.authSection.classList.add('hidden');
+                this.showMainSection();
+                this.loadDeals();
+                
+                this.tg.expand();
+                this.tg.enableClosingConfirmation();
+                this.tg.MainButton.setText('Мои сделки').show().onClick(() => {
+                    this.showMainSection();
+                });
+            }
+            
+            showMainSection() {
+                this.elements.mainSection.classList.remove('hidden');
+                this.elements.dealDetails.classList.add('hidden');
+                this.tg.MainButton.setText('Мои сделки').show();
+            }
+            
+            showDealDetails(dealId) {
+                this.currentDeal = this.db.getDeal(dealId);
+                if (!this.currentDeal) return;
+                
+                this.elements.mainSection.classList.add('hidden');
+                this.elements.dealDetails.classList.remove('hidden');
+                this.tg.MainButton.hide();
+                
+                this.updateDealView();
+            }
+            
+            updateDealView() {
+                if (!this.currentDeal) return;
+                
+                const deal = this.currentDeal;
+                const isBuyer = deal.buyer_id === this.user.id;
+                const otherPartyId = isBuyer ? deal.seller_id : deal.buyer_id;
+                const otherUser = this.db.getUser(otherPartyId) || {username: `ID: ${otherPartyId}`};
+                
+                // Обновляем основную информацию
+                this.elements.dealIdTitle.textContent = deal.deal_id;
+                this.elements.dealStatus.className = `deal-status status-${deal.status}`;
+                this.elements.dealStatus.textContent = this.getStatusText(deal.status);
+                
+                // Заполняем информацию о сделке
+                this.elements.dealInfo.innerHTML = `
+                    <p><strong>${isBuyer ? 'Продавец' : 'Покупатель'}:</strong> ${otherUser.username || otherUser.first_name || `ID: ${otherPartyId}`}</p>
+                    <p><strong>Сумма:</strong> ${deal.amount} ${deal.currency}</p>
+                    <p><strong>Описание:</strong> ${deal.description}</p>
+                    <p><strong>Создано:</strong> ${new Date(deal.created_at).toLocaleString()}</p>
+                    ${deal.payment_txid ? `<p><strong>ID транзакции:</strong> <span class="txid">${deal.payment_txid}</span></p>` : ''}
+                `;
+                
+                // Настраиваем раздел оплаты
+                this.setupPaymentSection();
+                
+                // Настраиваем доступные действия
+                this.setupActions();
+            }
+            
+            setupPaymentSection() {
+                const deal = this.currentDeal;
+                const isBuyer = deal.buyer_id === this.user.id;
+                
+                if (deal.status === 'created' && isBuyer) {
+                    // Генерируем адрес для оплаты (в реальном приложении это будет API кошелька)
+                    if (!deal.payment_address) {
+                        this.db.updateDeal(deal.deal_id, {
+                            payment_address: this.generateCryptoAddress(deal.currency, deal.deal_id),
+                            status: 'waiting_payment'
+                        });
+                        this.currentDeal = this.db.getDeal(deal.deal_id);
+                    }
+                    
+                    this.elements.paymentSection.classList.remove('hidden');
+                    this.elements.paymentInfo.innerHTML = `
+                        <p>Отправьте <strong>${deal.amount} ${deal.currency}</strong> на адрес:</p>
+                        <p class="txid">${deal.payment_address}</p>
+                    `;
+                    
+                    // Генерируем QR-код (упрощенная версия)
+                    this.elements.qrCodeContainer.innerHTML = `
+                        <div style="text-align: center;">
+                            <div style="width: 200px; height: 200px; background: #eee; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                [QR-код для ${deal.payment_address}]
+                            </div>
+                            <p>Отсканируйте для оплаты</p>
+                        </div>
+                    `;
+                } else {
+                    this.elements.paymentSection.classList.add('hidden');
+                }
+            }
+            
+            setupActions() {
+                const deal = this.currentDeal;
+                const isBuyer = deal.buyer_id === this.user.id;
+                
+                this.elements.dealActions.innerHTML = '';
+                
+                if (deal.status === 'waiting_payment' && isBuyer) {
+                    // Покупатель может подтвердить отправку платежа
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-success';
+                    btn.textContent = 'Я отправил платеж';
+                    btn.onclick = () => this.confirmPayment();
+                    this.elements.dealActions.appendChild(btn);
+                }
+                
+                if (deal.status === 'payment_sent' && isBuyer) {
+                    // Покупатель может подтвердить получение товара
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = 'btn btn-success';
+                    confirmBtn.textContent = 'Подтвердить получение';
+                    confirmBtn.onclick = () => {
+                        if (confirm('Вы уверены, что получили товар/услугу? Средства будут переведены продавцу.')) {
+                            this.completeDeal();
+                        }
+                    };
+                    this.elements.dealActions.appendChild(confirmBtn);
+                    
+                    // Или открыть спор
+                    const disputeBtn = document.createElement('button');
+                    disputeBtn.className = 'btn btn-danger';
+                    disputeBtn.textContent = 'Открыть спор';
+                    disputeBtn.style.marginLeft = '10px';
+                    disputeBtn.onclick = () => {
+                        if (confirm('Вы уверены, что хотите открыть спор? Администратор рассмотрит вашу ситуацию.')) {
+                            this.openDispute();
+                        }
+                    };
+                    this.elements.dealActions.appendChild(disputeBtn);
+                }
+                
+                if (deal.status === 'payment_sent' && !isBuyer) {
+                    // Продавец может открыть спор, если покупатель не подтверждает получение
+                    const disputeBtn = document.createElement('button');
+                    disputeBtn.className = 'btn btn
+                      disputeBtn.textContent = 'Открыть спор';
+                    disputeBtn.onclick = () => {
+                        if (confirm('Вы уверены, что хотите открыть спор? Администратор рассмотрит вашу ситуацию.')) {
+                            this.openDispute();
+                        }
+                    };
+                    this.elements.dealActions.appendChild(disputeBtn);
+                }
+            }
+            
+            // Генерация адреса для криптовалюты (имитация)
+            generateCryptoAddress(currency, dealId) {
+                const prefixes = {
+                    'BTC': '3FZbgi29',
+                    'ETH': '0x742d35',
+                    'USDT': 'TXjw8uV',
+                    'TON': 'EQCD39V',
+                    'USDC': '0xa0b869'
+                };
+                return `${prefixes[currency] || '3FZbgi29'}${dealId.toString().padStart(10, '0')}`;
+            }
+            
+            // Загрузка сделок пользователя
+            loadDeals() {
+                const deals = this.db.getUserDeals(this.user.id);
+                
+                if (deals.length === 0) {
+                    this.elements.noDealsMessage.classList.remove('hidden');
+                    this.elements.dealsList.innerHTML = '';
+                    return;
+                }
+                
+                this.elements.noDealsMessage.classList.add('hidden');
+                this.elements.dealsList.innerHTML = '';
+                
+                deals.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).forEach(deal => {
+                    const dealCard = document.createElement('div');
+                    dealCard.className = 'card deal-card';
+                    dealCard.onclick = () => this.showDealDetails(deal.deal_id);
+                    
+                    const otherPartyId = deal.buyer_id === this.user.id ? deal.seller_id : deal.buyer_id;
+                    const otherUser = this.db.getUser(otherPartyId) || {};
+                    
+                    dealCard.innerHTML = `
+                        <h3>Сделка #${deal.deal_id}</h3>
+                        <p><strong>Сторона:</strong> ${otherUser.username || otherUser.first_name || `ID: ${otherPartyId}`}</p>
+                        <p><strong>Сумма:</strong> ${deal.amount} ${deal.currency}</p>
+                        <p><strong>Статус:</strong> <span class="status-${deal.status}">${this.getStatusText(deal.status)}</span></p>
+                        <p><small>${new Date(deal.created_at).toLocaleString()}</small></p>
+                    `;
+                    
+                    this.elements.dealsList.appendChild(dealCard);
+                });
+            }
+            
+            // Создание новой сделки
+            createDeal() {
+                const sellerIdInput = document.getElementById('seller-id').value;
+                const amount = parseFloat(document.getElementById('amount').value);
+                const currency = document.getElementById('currency').value;
+                const description = document.getElementById('description').value;
+                
+                // Извлекаем числовой ID из @username или оставляем как есть
+                let sellerId = sellerIdInput;
+                if (sellerIdInput.startsWith('@')) {
+                    // В реальном приложении нужно преобразовывать username в ID через API Telegram
+                    sellerId = sellerIdInput.substring(1);
+                }
+                
+                const newDeal = {
+                    buyer_id: this.user.id,
+                    seller_id: sellerId,
+                    amount: amount,
+                    currency: currency,
+                    description: description
+                };
+                
+                const deal = this.db.addDeal(newDeal);
+                this.currentDeal = deal;
+                
+                alert(`Сделка #${deal.deal_id} создана!`);
+                document.getElementById('new-deal-form').reset();
+                this.showDealDetails(deal.deal_id);
+            }
+            
+            // Подтверждение платежа
+            confirmPayment() {
+                if (!this.currentDeal) return;
+                
+                const txid = this.elements.txidInput.value.trim();
+                if (!txid && confirm("Вы еще не указали ID транзакции. Хотите продолжить без него?")) {
+                    // Продолжаем без TXID
+                }
+                
+                this.db.updateDeal(this.currentDeal.deal_id, {
+                    status: 'payment_sent',
+                    payment_txid: txid || null
+                });
+                
+                this.currentDeal = this.db.getDeal(this.currentDeal.deal_id);
+                this.updateDealView();
+                
+                alert('Платеж подтвержден! Ожидайте выполнения обязательств от второй стороны.');
+            }
+            
+            // Подтверждение получения товара
+            completeDeal() {
+                if (!this.currentDeal) return;
+                
+                this.db.updateDeal(this.currentDeal.deal_id, {
+                    status: 'completed'
+                });
+                
+                this.currentDeal = this.db.getDeal(this.currentDeal.deal_id);
+                this.updateDealView();
+                
+                alert('Сделка завершена! Средства переданы продавцу.');
+            }
+            
+            // Открытие спора
+            openDispute() {
+                if (!this.currentDeal) return;
+                
+                this.db.updateDeal(this.currentDeal.deal_id, {
+                    status: 'dispute'
+                });
+                
+                this.currentDeal = this.db.getDeal(this.currentDeal.deal_id);
+                this.updateDealView();
+                
+                alert('Спор открыт! Администратор свяжется с вами в ближайшее время для разрешения ситуации.');
+            }
+            
+            // Вспомогательные функции
+            getStatusText(status) {
+                const statusMap = {
+                    'created': 'Создана',
+                    'waiting_payment': 'Ожидает оплаты',
+                    'payment_sent': 'Оплата получена',
+                    'completed': 'Завершена',
+                    'dispute': 'Спор'
+                };
+                return statusMap[status] || status;
+            }
+        }
+
+        // Инициализация приложения при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            new EscrowApp();
+        });
+    </script>
+</body>
+</html>
