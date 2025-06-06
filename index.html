@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -120,6 +119,21 @@
             gap: 10px;
             flex-wrap: wrap;
         }
+        #tg-open-btn-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        #direct-link a.btn {
+            display: inline-block;
+            padding: 8px 15px;
+            font-size: 14px;
+            background: #0088cc;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
         @media (max-width: 600px) {
             .container { padding: 10px; }
             .card { padding: 15px; }
@@ -132,9 +146,15 @@
         <div id="auth-section" class="card text-center">
             <h2>Добро пожаловать в Crypto Escrow</h2>
             <p>Безопасные сделки с криптовалютой через Telegram</p>
-            <button id="auth-btn" class="btn">Открыть в Telegram</button>
+            <div id="tg-open-btn-container">
+                <button id="auth-btn" class="btn">Открыть в Telegram</button>
+                <div id="direct-link" style="display: none; margin-top: 10px;">
+                    <small>Или перейдите в: </small>
+                    <a href="https://t.me/tulskiguarant_bot" target="_blank" class="btn">@tulskiguarant_bot</a>
+                </div>
+            </div>
             <div class="mt-3">
-                <small>Для работы откройте через @tulskiguarant_bot</small>
+                <small>Для работы необходимо открыть через Telegram-бота</small>
             </div>
         </div>
 
@@ -312,7 +332,8 @@
                     'deal-status', 'deal-info', 'payment-section',
                     'payment-info', 'qr-code-container', 'deal-actions',
                     'new-deal-form', 'auth-btn', 'back-btn', 'submit-txid',
-                    'txid', 'seller-id', 'amount', 'currency', 'description'
+                    'txid', 'seller-id', 'amount', 'currency', 'description',
+                    'direct-link'
                 ];
                 
                 ids.forEach(id => {
@@ -321,8 +342,17 @@
             }
             
             initEvents() {
+                // Обработчик кнопки "Открыть в Telegram"
                 this.el.authBtn?.addEventListener('click', () => {
-                    window.open(`https://t.me/${CONFIG.BOT_USERNAME}`, '_blank');
+                    if (this.isTelegramWebApp()) {
+                        this.tg.openTelegramLink(`https://t.me/${CONFIG.BOT_USERNAME}`);
+                    } else {
+                        this.el['direct-link'].style.display = 'block';
+                        window.location.href = `tg://resolve?domain=${CONFIG.BOT_USERNAME}`;
+                        setTimeout(() => {
+                            window.open(`https://t.me/${CONFIG.BOT_USERNAME}`, '_blank');
+                        }, 200);
+                    }
                 });
                 
                 this.el.backBtn?.addEventListener('click', () => {
@@ -339,13 +369,21 @@
                 });
             }
             
+            isTelegramWebApp() {
+                return !!window.Telegram?.WebApp?.initData;
+            }
+            
             checkAuth() {
-                if (this.user) {
+                if (this.isTelegramWebApp() && this.tg.initDataUnsafe?.user) {
+                    this.user = this.tg.initDataUnsafe.user;
                     this.db.registerUser(this.user);
                     this.showMainSection();
                     this.initTelegramFeatures();
                 } else {
                     this.el.authSection?.classList.remove('hidden');
+                    if (!this.isTelegramWebApp()) {
+                        this.el['direct-link'].style.display = 'block';
+                    }
                 }
             }
             
@@ -445,267 +483,238 @@
             }
             
             generateQRCode(text) {
-                // В реальном приложении используйте библиотеку qrcode.js
                 const canvas = document.createElement('canvas');
                 canvas.width = 200;
-                canvas.height = 200;
-                const ctx = canvas.getContext('2d');
+                canvas.height = 200 
+            Похоже, что код обрезался. Давайте продолжим с того места, где остановились, и завершим реализацию приложения.
+
+```javascript
+                // Генерация QR-кода
+                QRCode.toCanvas(canvas, text, { width: 180 }, (error) => {
+                    if (error) console.error('QR code error:', error);
+                });
                 
-                // Простая имитация QR-кода
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(0, 0, 200, 200);
-                ctx.fillStyle = '#000';
-                ctx.font = '10px monospace';
-                ctx.fillText('QR Code for:', 10, 20);
-                ctx.fillText(text.substring(0, 15), 10, 40);
-                ctx.fillText(text.substring(15), 10, 60);
-                
-                this.el['qr-code-container'].innerHTML = '';
-                this.el['qr-code-container'].appendChild(canvas);
+                const container = this.el['qr-code-container'];
+                container.innerHTML = '';
+                container.appendChild(canvas);
             }
             
             renderActions() {
                 const deal = this.currentDeal;
-                if (!deal) return;
-                
                 const isBuyer = deal.buyer_id === this.user.id;
-                this.el['deal-actions'].innerHTML = '';
+                const actions = this.el['deal-actions'];
+                actions.innerHTML = '';
                 
-                const addButton = (text, className, onClick) => {
+                const addButton = (text, type, onClick, condition = true) => {
+                    if (!condition) return;
                     const btn = document.createElement('button');
-                    btn.className = `btn ${className}`;
+                    btn.className = `btn btn-${type}`;
                     btn.textContent = text;
-                    btn.onclick = onClick;
-                    this.el['deal-actions'].appendChild(btn);
+                    btn.addEventListener('click', onClick);
+                    actions.appendChild(btn);
                 };
                 
-                if (deal.status === 'waiting_payment' && isBuyer) {
-                    addButton('Я отправил платеж', 'btn-success', () => this.confirmPayment());
-                }
-                
-                if (deal.status === 'payment_sent') {
-                    if (isBuyer) {
-                        addButton('Подтвердить получение', 'btn-success', () => {
-                            if (confirm('Подтвердить получение товара? Средства будут переведены продавцу.')) {
-                                this.completeDeal();
-                            }
-                        });
+                // Кнопки для разных статусов и ролей
+                switch(deal.status) {
+                    case 'waiting_payment':
+                        if (!isBuyer) {
+                            addButton('Отменить сделку', 'danger', () => this.cancelDeal());
+                        }
+                        break;
                         
-                        addButton('Открыть спор', 'btn-danger', () => {
-                            if (confirm('Вы уверены, что хотите открыть спор?')) {
-                                this.openDispute();
-                            }
-                        });
-                    } else {
-                        // Для продавца
-                        addButton('Открыть спор', 'btn-warning', () => {
-                            if (confirm('Открыть спор по сделке?')) {
-                                this.openDispute();
-                            }
-                        });
-                    }
+                    case 'payment_sent':
+                        if (isBuyer) {
+                            addButton('Подтвердить получение', 'success', () => this.completeDeal());
+                        } else {
+                            addButton('Подтвердить оплату', 'success', () => this.confirmPaymentReceived());
+                            addButton('Оспорить', 'danger', () => this.openDispute());
+                        }
+                        break;
+                        
+                    case 'dispute':
+                        addButton('Закрыть спор', 'warning', () => this.closeDispute(), this.user.id === deal.admin_id);
+                        break;
                 }
             }
             
+            getStatusText(status) {
+                const statusTexts = {
+                    'created': 'Создана',
+                    'waiting_payment': 'Ожидает оплаты',
+                    'payment_sent': 'Оплата отправлена',
+                    'completed': 'Завершена',
+                    'dispute': 'Спор'
+                };
+                return statusTexts[status] || status;
+            }
+            
+            generateCryptoAddress(currency, dealId) {
+                // В реальном приложении здесь был бы запрос к API криптосервиса
+                const prefixes = {
+                    'BTC': '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+                    'ETH': '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+                    'USDT': '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+                    'TON': 'EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N'
+                };
+                return `${prefixes[currency]}_${dealId}`;
+            }
+            
             loadDeals() {
-                const deals = this.db.getUserDeals(this.user.id);
+                if (!this.user) return;
                 
-                if (!deals || deals.length === 0) {
-                    this.el['no-deals-message'].classList.remove('hidden');
-                    this.el['deals-list'].innerHTML = '';
+                const deals = this.db.getUserDeals(this.user.id);
+                const list = this.el['deals-list'];
+                
+                if (deals.length === 0) {
+                    this.el['no-deals-message'].style.display = 'block';
+                    list.innerHTML = '';
                     return;
                 }
                 
-                this.el['no-deals-message'].classList.add('hidden');
-                this.el['deals-list'].innerHTML = '';
+                this.el['no-deals-message'].style.display = 'none';
+                list.innerHTML = '';
                 
-                // Сортируем сделки по дате (новые сначала)
-                deals.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                
-                deals.forEach(deal => {
-                    const otherPartyId = deal.buyer_id === this.user.id ? deal.seller_id : deal.buyer_id;
+                deals.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).forEach(deal => {
+                    const isBuyer = deal.buyer_id === this.user.id;
+                    const otherPartyId = isBuyer ? deal.seller_id : deal.buyer_id;
                     const otherUser = this.db.getUser(otherPartyId) || {};
                     
-                    const dealCard = document.createElement('div');
-                    dealCard.className = 'card deal-card';
-                    dealCard.onclick = () => this.showDealDetails(deal.deal_id);
-                    
-                    dealCard.innerHTML = `
-                        <h3>Сделка #${deal.deal_id}</h3>
-                        <p><strong>С ${deal.buyer_id === this.user.id ? 'продавцом' : 'покупателем'}:</strong> 
+                    const dealEl = document.createElement('div');
+                    dealEl.className = `deal-card card`;
+                    dealEl.innerHTML = `
+                        <h3>Сделка #${deal.deal_id.substring(0, 8)}</h3>
+                        <p><strong>${isBuyer ? 'Продавец' : 'Покупатель'}:</strong> 
                         ${otherUser.username || otherUser.first_name || `ID: ${otherPartyId}`}</p>
                         <p><strong>Сумма:</strong> ${deal.amount} ${deal.currency}</p>
-                        <p><strong>Статус:</strong> <span class="status-${deal.status}">
-                            ${this.getStatusText(deal.status)}
-                        </span></p>
-                        <p><small>${new Date(deal.created_at).toLocaleString()}</small></p>
+                        <p><strong>Статус:</strong> <span class="status-${deal.status}">${this.getStatusText(deal.status)}</span></p>
                     `;
-                    
-                    this.el['deals-list'].appendChild(dealCard);
+                    dealEl.addEventListener('click', () => this.showDealDetails(deal.deal_id));
+                    list.appendChild(dealEl);
                 });
             }
             
             createDeal() {
+                if (!this.user) return;
+                
                 const sellerId = this.el['seller-id'].value.trim();
                 const amount = parseFloat(this.el['amount'].value);
                 const currency = this.el['currency'].value;
                 const description = this.el['description'].value.trim();
                 
-                if (!sellerId || isNaN(amount) || !description) {
+                if (!sellerId || isNaN(amount) {
                     alert('Пожалуйста, заполните все поля корректно');
                     return;
                 }
                 
-                // Очищаем @ в начале username если есть
-                const cleanSellerId = sellerId.startsWith('@') 
-                    ? sellerId.substring(1) 
-                    : sellerId;
-                
                 const newDeal = {
                     buyer_id: this.user.id,
-                    seller_id: cleanSellerId,
-                    amount: amount,
-                    currency: currency,
-                    description: description
+                    seller_id: sellerId.replace('@', ''),
+                    amount,
+                    currency,
+                    description,
+                    admin_id: null // будет установлен при споре
                 };
                 
-                try {
-                    const deal = this.db.addDeal(newDeal);
-                    this.currentDeal = deal;
-                    
-                    // Очищаем форму
-                    this.el['new-deal-form'].reset();
-                    
-                    // Показываем созданную сделку
-                    this.showDealDetails(deal.deal_id);
-                    
-                    // В реальном приложении здесь можно отправить уведомление продавцу
-                    // this.notifySeller(deal);
-                    
-                } catch (error) {
-                    console.error('Ошибка создания сделки:', error);
-                    alert('Произошла ошибка при создании сделки');
-                }
+                const deal = this.db.addDeal(newDeal);
+                this.showDealDetails(deal.deal_id);
+                
+                // Очистка формы
+                this.el['new-deal-form'].reset();
             }
             
             confirmPayment() {
-                if (!this.currentDeal) return;
-                
                 const txid = this.el['txid'].value.trim();
-                if (!txid && !confirm('Вы не указали TXID. Продолжить без него?')) {
+                if (!txid) {
+                    alert('Пожалуйста, введите ID транзакции');
                     return;
                 }
                 
                 this.db.updateDeal(this.currentDeal.deal_id, {
-                    status: 'payment_sent',
-                    payment_txid: txid || null
+                    payment_txid: txid,
+                    status: 'payment_sent'
                 });
                 
                 this.currentDeal = this.db.getDeal(this.currentDeal.deal_id);
                 this.renderDeal();
                 
-                alert('Платеж подтвержден! Ожидайте выполнения обязательств.');
+                // В реальном приложении здесь была бы проверка транзакции через API
+                setTimeout(() => {
+                    alert('Транзакция получена, ожидайте подтверждения от продавца');
+                }, 500);
             }
             
-            completeDeal() {
-                if (!this.currentDeal) return;
-                
-                if (confirm('Вы уверены, что получили товар/услугу? Средства будут переведены продавцу.')) {
+            confirmPaymentReceived() {
+                if (confirm('Вы уверены, что получили оплату?')) {
                     this.db.updateDeal(this.currentDeal.deal_id, {
-                        status: 'completed'
+                        status: 'completed',
+                        completed_at: new Date().toISOString()
                     });
                     
                     this.currentDeal = this.db.getDeal(this.currentDeal.deal_id);
                     this.renderDeal();
+                }
+            }
+            
+            completeDeal() {
+                if (confirm('Вы подтверждаете, что получили товар/услугу?')) {
+                    this.db.updateDeal(this.currentDeal.deal_id, {
+                        status: 'completed',
+                        completed_at: new Date().toISOString()
+                    });
                     
-                    alert('Сделка успешно завершена!');
+                    this.currentDeal = this.db.getDeal(this.currentDeal.deal_id);
+                    this.renderDeal();
+                }
+            }
+            
+            cancelDeal() {
+                if (confirm('Вы уверены, что хотите отменить сделку?')) {
+                    this.db.updateDeal(this.currentDeal.deal_id, {
+                        status: 'canceled',
+                        canceled_at: new Date().toISOString()
+                    });
+                    
+                    this.showMainSection();
                 }
             }
             
             openDispute() {
-                if (!this.currentDeal) return;
-                
-                if (confirm('Открыть спор по сделке? Администратор рассмотрит ваш случай.')) {
+                if (confirm('Открыть спор по сделке? Администратор рассмотрит ситуацию.')) {
                     this.db.updateDeal(this.currentDeal.deal_id, {
-                        status: 'dispute'
+                        status: 'dispute',
+                        admin_id: 'admin_user_id' // В реальном приложении выбирается администратор
                     });
                     
                     this.currentDeal = this.db.getDeal(this.currentDeal.deal_id);
                     this.renderDeal();
-                    
-                    alert('Спор открыт. Администратор свяжется с вами.');
-                    
-                    // В реальном приложении здесь можно уведомить администратора
-                    // this.notifyAdmin(this.currentDeal);
                 }
             }
             
-            generateCryptoAddress(currency, dealId) {
-                // В реальном приложении нужно интегрироваться с API криптокошелька
-                const prefixes = {
-                    'BTC': '3FZbgi29',
-                    'ETH': '0x742d35',
-                    'USDT': 'TXjw8uV',
-                    'TON': 'EQCD39V'
-                };
-                return `${prefixes[currency] || 'ESCROW'}${dealId.toString().padStart(10, '0')}`;
-            }
-            
-            getStatusText(status) {
-                const statusMap = {
-                    'created': 'Создана',
-                    'waiting_payment': 'Ожидает оплаты',
-                    'payment_sent': 'Оплата получена',
-                    'completed': 'Завершена',
-                    'dispute': 'Спор'
-                };
-                return statusMap[status] || status;
-            }
-            
-            // В реальном приложении добавьте методы для работы с API:
-            /*
-            async notifySeller(deal) {
-                try {
-                    const response = await fetch(`${CONFIG.API_URL}/notify`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${CONFIG.CRYPTO_API_KEY}`
-                        },
-                        body: JSON.stringify({
-                            deal_id: deal.deal_id,
-                            seller_id: deal.seller_id,
-                            amount: deal.amount,
-                            currency: deal.currency
-                        })
+            closeDispute() {
+                const resolution = prompt('Введите решение по спору (complete/cancel):');
+                if (resolution === 'complete' || resolution === 'cancel') {
+                    this.db.updateDeal(this.currentDeal.deal_id, {
+                        status: resolution === 'complete' ? 'completed' : 'canceled',
+                        resolved_at: new Date().toISOString()
                     });
                     
-                    if (!response.ok) {
-                        throw new Error('Ошибка уведомления');
-                    }
-                } catch (error) {
-                    console.error('Ошибка уведомления продавца:', error);
+                    this.currentDeal = this.db.getDeal(this.currentDeal.deal_id);
+                    this.renderDeal();
                 }
             }
-            */
         }
 
-        // Инициализация приложения после загрузки страницы
+        // Инициализация приложения
         document.addEventListener('DOMContentLoaded', () => {
-            const app = new EscrowApp();
-            
-            // Для тестирования вне Telegram
-            if (!window.Telegram?.WebApp) {
-                console.warn('Запущено вне Telegram WebApp. Режим демонстрации.');
-                // Тестовый пользователь
-                app.user = {
-                    id: 123456789,
-                    first_name: 'Тестовый',
-                    username: 'test_user'
-                };
-                app.checkAuth();
-            }
+            // Подключаем библиотеку QR-кода
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js';
+            script.onload = () => {
+                new EscrowApp();
+            };
+            document.head.appendChild(script);
         });
     </script>
 </body>
 </html>
+```
